@@ -12,6 +12,7 @@ yolo1_options = {}
 
 # for yolo2
 yolo2_options = {
+					'info': 'yolo2_options',
 					'max_object': 50,
 					'stride': 32,
 					'backupdir': './backup',
@@ -22,12 +23,15 @@ yolo2_options = {
 					'ngpu': 2,
 					'use_cuda': True,
 					'num_workers': 4,
+					'is_multiscale': True,
 					'weightfile': '',
 					'cfgfile': './cfg/yolov2.cfg',
 					'save_interval': 10,
 					'conf_thresh': 0.25,
 					'nms_thresh': 0.4,
-					'iou_thresh': 0.5
+					'iou_thresh': 0.5,
+					'jitter': 0.3,
+					'mode': 'train'
 				}
 
 

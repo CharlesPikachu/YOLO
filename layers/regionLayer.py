@@ -119,6 +119,7 @@ class regionLayer(nn.Module):
 	def __init__(self, **kwargs):
 		super(regionLayer, self).__init__()
 		self.options = kwargs
+		self.seen = self.options.get('seen')
 	# for forward
 	def forward(self, output, target):
 		'''
@@ -167,7 +168,6 @@ class regionLayer(nn.Module):
 		noobject_scale = self.options.get('noobject_scale')
 		object_scale = self.options.get('object_scale')
 		sil_thresh = self.options.get('sil_thresh')
-		seen = self.options.get('seen')
 		max_object = self.options.get('max_object')
 		nGT, nCorrect, coord_mask, conf_mask, cls_mask, tx, ty, tw, th, tconf, tcls = build_targets(pred_boxes=pred_boxes, 
 																									target=target.data, 
@@ -179,7 +179,7 @@ class regionLayer(nn.Module):
 																									noobject_scale=noobject_scale, 
 																									object_scale=object_scale, 
 																									sil_thresh=sil_thresh, 
-																									seen=seen,
+																									seen=self.seen,
 																									max_object=max_object)
 		cls_mask = (cls_mask == 1)
 		# conf > 0.25 as the proposals.

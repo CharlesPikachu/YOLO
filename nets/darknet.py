@@ -112,8 +112,10 @@ class Darknet(nn.Module):
 		self.options = options
 		self.models = self.create_network()
 	# net forward
-	def forward(self, x):
+	def forward(self, x, target=None):
+		self.seen += x.data.size(0)
 		ind = -2
+		loss = None
 		outputs = dict()
 		for block in self.blocks:
 			ind += 1
@@ -150,7 +152,8 @@ class Darknet(nn.Module):
 				pass
 			# yoloV2
 			elif block['layer_type'] == 'region':
-				pass
+				self.models[ind].seen = self.seen
+				loss = self.models[ind](x, target)
 			# yoloV3
 			elif block['layer_type'] == 'yolo':
 				pass
@@ -160,7 +163,10 @@ class Darknet(nn.Module):
 			else:
 				print('[Error]:unkown layer_type <%s>...' % (block['layer_type']))
 				sys.exit(0)
-			return x
+			if self.options.get('mode') == 'train':
+				return loss
+			else:
+				return x
 	# create netword
 	def create_network(self):
 		models = nn.ModuleList()
@@ -339,7 +345,7 @@ class Darknet(nn.Module):
 	# load weights
 	def load_weights(self, weightfile):
 		with open(weightfile, 'rb') as fp:
-			# before yolo3, weights get from https://github.com/pjreddie/darknet count = 5.
+			# before yolo3, weights get from https://github.com/pjreddie/darknet count = 4.
 			header = np.fromfile(fp, count=5, dtype=np.int32)
 			self.header = torch.from_numpy(header)
 			self.seen = self.header[3]

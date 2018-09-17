@@ -7,11 +7,14 @@ Function:
 import os
 import sys
 import math
+import time
 import config
 import torch.optim as optim
 from layers import *
 from utils.utils import *
 from nets.darknet import Darknet
+from torchvision import transforms
+from torch.autograd import Variable
 from dataset.dataset import myDataset
 
 
@@ -37,22 +40,45 @@ class train():
 		self.__initialization()
 	# start to train.
 	def start(self):
+		for epoch in range(self.init_epoch, self.max_epochs):
+			self.__train_epoch(epoch)
+	# train for one epoch.
+	def __train_epoch(self, epoch):
 		if self.ngpus > 1:
 			cur_model = model.module
 		else:
 			cur_model = model
 		train_loader = torch.utils.data.DataLoader(
 							myDataset(self.tarinSet,
-									  shape=(init_width, init_height),
+									  shape=(self.init_width, self.init_height),
 									  shuffle=True,
 									  transform=transforms.Compose([transforms.ToTensor(),]),
-									  train=True,
+									  is_train=True,
 									  seen=cur_model.seen,
-									  batch_size=batch_size,
-									  num_workers=num_workers),
-							batch_size=batch_size,
+									  batch_size=self.batch_size,
+									  num_workers=self.num_workers),
+							batch_size=self.batch_size,
 							shuffle=False,
-							**kwargs)
+							**self.kwargs)
+		logging('epoch %d, processed %d samples, processed_batches %f' % (epoch, epoch * len(train_loader.dataset), self.processed_batches))
+		model.train()
+		for batch_idx, (data, target) in enumerate(train_loader):
+			t0 = time.time()
+			lr = self.__adjust_lr(self.optimizer, self.processed_batches)
+			self.processed_batches += 1
+			if self.use_cuda:
+				data = data.cuda()
+			data, target = Variable(data), Variable(target)
+			self.optimizer.zero_grad()
+			loss = model(data, target)
+			loss.backward()
+			self.optimizer.step()
+			t1 = time.time()
+			logging('training with %f samples/s' % (data.size(0) / (t1-t0)))
+			if ((epoch + 1) % self.save_interval == 0) or ((epoch + 1) == self.max_epochs):
+				logging('save weights to %s/%06d.weights' % (backupdir, epoch+1))
+				cur_model.seen = (epoch + 1) * len(train_loader.dataset)
+				cur_model.save_weights('%s/%06d.weights' % (backupdir, epoch+1))
 	# initialization
 	def __initialization(self):
 		self.use_cuda = self.options.get('use_cuda')
@@ -63,6 +89,7 @@ class train():
 		self.tarinSet = self.options.get('tarinSet')
 		self.testSet = self.options.get('testSet')
 		self.num_workers = self.options.get('num_workers')
+		self.is_multiscale = self.options.get('is_multiscale')
 		self.weightfile = self.options.get('weightfile')
 		self.nsamples = file_lines(self.tarinSet)
 		self.batch_size = int(self.net_options.get('batch'))
@@ -72,6 +99,10 @@ class train():
 		self.scales = [float(scale) for scale in self.net_options.get('scales').split(',')]
 		self.momentum = float(self.net_options.get('momentum'))
 		self.decay = float(self.net_options.get('decay'))
+		self.jitter = self.options.get('jitter')
+		self.saturation = float(self.net_options.get('saturation'))
+		self.exposure = float(self.net_options.get('exposure'))
+		self.hue = float(self.net_options.get('hue'))
 		self.max_epochs = math.ceil(self.max_batches * self.batch_size / self.nsamples)
 		if not os.path.exists(self.backupdir):
 			os.mkdir(self.backupdir)
@@ -117,4 +148,5 @@ class train():
 
 
 if __name__ == '__main__':
-	pass
+	t = train()
+	t.start()
