@@ -154,8 +154,9 @@ class Darknet(nn.Module):
 				pass
 			# yoloV2
 			elif block['layer_type'] == 'region':
-				self.models[ind].seen = self.seen
-				loss = self.models[ind](x, target)
+				if self.options.get('mode') == 'train':
+					self.models[ind].seen = self.seen
+					loss = self.models[ind](x, target)
 			# yoloV3
 			elif block['layer_type'] == 'yolo':
 				self.models[ind].seen = self.seen
@@ -343,7 +344,7 @@ class Darknet(nn.Module):
 	def load_weights(self, weightfile):
 		with open(weightfile, 'rb') as fp:
 			# before yolo3, weights get from https://github.com/pjreddie/darknet count = 4.
-			header = np.fromfile(fp, count=5, dtype=np.int32)
+			header = np.fromfile(fp, count=4, dtype=np.int32)
 			self.header = torch.from_numpy(header)
 			self.seen = self.header[3]
 			buf = np.fromfile(fp, dtype=np.float32)

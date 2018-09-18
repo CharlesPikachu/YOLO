@@ -5,6 +5,7 @@ Function:
 	Some utils.
 '''
 import os
+import cv2
 import sys
 import math
 import time
@@ -620,11 +621,132 @@ Function:
 	Get all boxes by using the outputs of network.
 '''
 # ----------------------------------------------------------------------------------------------------------------------------------
+def get_boxes_yolo1(output, **kwargs):
+	pass
 
+def get_boxes_yolo2(output, **kwargs):
+	anchors = kwargs.get('anchors')
+	num_anchors = kwargs.get('num_anchors')
+	num_classes = kwargs.get('num_classes')
+	conf_thresh = kwargs.get('conf_thresh')
+	anchor_step = len(anchors) // num_anchors
+	if output.dim() == 3:
+		output = output.unsqueeze(0)
+	batch_size = output.size(0)
+	assert output.size(1) == (5 + num_classes) * num_anchors
+	h = output.size(2)
+	w = output.size(3)
+	all_boxes = []
+	output = output.view(batch_size*num_anchors, 5+num_classes, h*w).transpose(0, 1).contiguous().view(5+num_classes, batch_size*num_anchors*h*w)
+	grid_x = torch.linspace(0, w-1, w).repeat(h, 1).repeat(batch_size*num_anchors, 1, 1).view(batch_size*num_anchors*h*w).type_as(output)
+	grid_y = torch.linspace(0, h-1, h).repeat(w, 1).t().repeat(batch_size*num_anchors, 1, 1).view(batch_size*num_anchors*h*w).type_as(output)
+	xs = torch.sigmoid(output[0]) + grid_x
+	ys = torch.sigmoid(output[1]) + grid_y
+	anchor_w = torch.Tensor(anchors).view(num_anchors, anchor_step).index_select(1, torch.LongTensor([0]))
+	anchor_h = torch.Tensor(anchors).view(num_anchors, anchor_step).index_select(1, torch.LongTensor([1]))
+	anchor_w = anchor_w.repeat(batch_size, 1).repeat(1, 1, h*w).view(batch_size*num_anchors*h*w).type_as(output)
+	anchor_h = anchor_h.repeat(batch_size, 1).repeat(1, 1, h*w).view(batch_size*num_anchors*h*w).type_as(output)
+	ws = torch.exp(output[2]) * anchor_w
+	hs = torch.exp(output[3]) * anchor_h
+	det_confs = torch.sigmoid(output[4])
+	cls_confs = torch.nn.Softmax(dim=1)(torch.autograd.Variable(output[5: 5+num_classes].transpose(0, 1))).data
+	cls_max_confs, cls_max_ids = torch.max(cls_confs, 1)
+	cls_max_confs = cls_max_confs.view(-1)
+	cls_max_ids = cls_max_ids.view(-1)
+	sz_hw = h * w
+	sz_hwa = sz_hw * num_anchors
+	det_confs = convert2cpu(det_confs)
+	cls_max_confs = convert2cpu(cls_max_confs)
+	cls_max_ids = convert2cpu_long(cls_max_ids)
+	xs = convert2cpu(xs)
+	ys = convert2cpu(ys)
+	ws = convert2cpu(ws)
+	hs = convert2cpu(hs)
+	for b in range(batch_size):
+		boxes = []
+		for cy in range(h):
+			for cx in range(w):
+				for i in range(num_anchors):
+					ind = b*sz_hwa + i*sz_hw + cy*w + cx
+					det_conf = det_confs[ind]
+					conf = det_confs[ind]
+					if conf > conf_thresh:
+						bcx = xs[ind]
+						bcy = ys[ind]
+						bw = ws[ind]
+						bh = hs[ind]
+						cls_max_conf = cls_max_confs[ind]
+						cls_max_id = cls_max_ids[ind]
+						box = [bcx/w, bcy/h, bw/w, bh/h, det_conf, cls_max_conf, cls_max_id]
+						boxes.append(box)
+		all_boxes.append(boxes)
+	return all_boxes
+
+def get_boxes_yolo3(output, **kwargs):
+	pass
 # ----------------------------------------------------------------------------------------------------------------------------------
 
 
+'''
+Function:
+	Convert PIL image to Torch.
+'''
+# ----------------------------------------------------------------------------------------------------------------------------------
+def image2torch(img):
+	width = img.width
+	height = img.height
+	img = torch.ByteTensor(torch.ByteStorage.from_buffer(img.tobytes()))
+	img = img.view(height, width, 3).transpose(0, 1).transpose(0, 2).contiguous()
+	img = img.view(1, 3, height, width)
+	img = img.float().div(255.0)
+	return img
+# ----------------------------------------------------------------------------------------------------------------------------------
 
+
+'''
+Function:
+	plot boxes in cv2 Demo.
+'''
+# ----------------------------------------------------------------------------------------------------------------------------------
+def plot_boxes_cv2(img, boxes, class_names=None, color=None):
+	colors = torch.FloatTensor([[1, 0, 1], [0, 0, 1], [0, 1, 1], [0, 1, 0], [1, 1, 0], [1, 0, 0]])
+	def get_color(c, x, max_val):
+		ratio = float(x) / max_val * 5
+		i = int(math.floor(ratio))
+		j = int(math.ceil(ratio))
+		ratio = ratio - i
+		r = (1-ratio) * colors[i][c] + ratio * colors[j][c]
+		return int(r*255)
+	try:
+		width = img.shape[1]
+		height = img.shape[0]
+	except:
+		print('[Error]: The type of image in <plot_boxes_cv2> unsupported...')
+		sys.exit(-1)
+	for i in range(len(boxes)):
+		box = boxes[i]
+		x1 = int(round((box[0] - box[2]/2.0) * width, 0))
+		y1 = int(round((box[1] - box[3]/2.0) * height, 0))
+		x2 = int(round((box[0] + box[2]/2.0) * width, 0))
+		y2 = int(round((box[1] + box[3]/2.0) * height, 0))
+		if color:
+			rgb = color
+		else:
+			rgb = (255, 0, 0)
+		if len(box) == 7 and class_names:
+			cls_conf = box[5]
+			cls_id = box[6]
+			classes = len(class_names)
+			offset = cls_id * 123457 % classes
+			red = get_color(2, offset, classes)
+			green = get_color(1, offset, classes)
+			blue = get_color(0, offset, classes)
+			if color is None:
+				rgb = (red, green, blue)
+			img = cv2.putText(img, class_names[cls_id], (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 1.2, rgb, 1)
+		img = cv2.rectangle(img, (x1, y1), (x2, y2), rgb, 1)
+	return img
+# ----------------------------------------------------------------------------------------------------------------------------------
 
 
 # for test

@@ -157,5 +157,5 @@ class train():
 
 
 if __name__ == '__main__':
-	t = train()
+	t = train(yolo_type='yolo2')
 	t.start()

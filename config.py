@@ -19,20 +19,20 @@ yolo2_options = {
 					'trainSet': '/home/zcjin/voc_train.txt',
 					'testSet': '/home/zcjin/2007_test.txt',
 					'labpth': None,
-					'namespath': './names/voc.names',
+					'clsnamesfile': './names/coco.names',
 					'gpus': '0, 1',
 					'ngpus': 2,
 					'use_cuda': True,
 					'num_workers': 4,
 					'is_multiscale': True,
-					'weightfile': '',
+					'weightfile': './weights/yolov2.weights',
 					'cfgfile': './cfg/yolov2.cfg',
 					'save_interval': 10,
 					'conf_thresh': 0.25,
 					'nms_thresh': 0.4,
 					'iou_thresh': 0.5,
 					'jitter': 0.3,
-					'mode': 'train'
+					'mode': 'test'
 				}
 
 
