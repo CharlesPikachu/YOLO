@@ -105,6 +105,7 @@ Function:
 '''
 class Darknet(nn.Module):
 	def __init__(self, options):
+		super(Darknet, self).__init__()
 		self.blocks = CfgParser().parser(options.get('cfgfile'), is_print=True)
 		# record some information.
 		self.header = torch.IntTensor([0, 0, 0, 0, 0])
@@ -149,6 +150,7 @@ class Darknet(nn.Module):
 				outputs[ind] = x
 			# yoloV1
 			elif block['layer_type'] == 'detection':
+				self.models[ind].seen = self.seen
 				pass
 			# yoloV2
 			elif block['layer_type'] == 'region':
@@ -156,6 +158,7 @@ class Darknet(nn.Module):
 				loss = self.models[ind](x, target)
 			# yoloV3
 			elif block['layer_type'] == 'yolo':
+				self.models[ind].seen = self.seen
 				pass
 			# for resnet, too lazy to realize, o(╥﹏╥)o
 			elif block['layer_type'] == 'cost':
@@ -163,16 +166,17 @@ class Darknet(nn.Module):
 			else:
 				print('[Error]:unkown layer_type <%s>...' % (block['layer_type']))
 				sys.exit(0)
-			if self.options.get('mode') == 'train':
-				return loss
-			else:
-				return x
+		if self.options.get('mode') == 'train':
+			return loss
+		else:
+			return x
 	# create netword
 	def create_network(self):
 		models = nn.ModuleList()
 		conv_id = 0
 		out_filters = []
 		out_strides = []
+		prev_stride = 1
 		for block in self.blocks:
 			if block['layer_type'] == 'net':
 				prev_filters = int(block['channels'])
@@ -249,8 +253,8 @@ class Darknet(nn.Module):
 				models.append(Upsample(stride))
 			elif block['layer_type'] == 'route':
 				layers = block['layers'].split(',')
-				layers = [int(i) if int(i) > 0 else int(i)+ind for i in layers]
 				ind = len(models)
+				layers = [int(i) if int(i) > 0 else int(i)+ind for i in layers]
 				if len(layers) == 1:
 					prev_filters = out_filters[layers[0]]
 					prev_stride = out_strides[layers[0]]
@@ -286,15 +290,13 @@ class Darknet(nn.Module):
 				models.append(model)
 			elif block['layer_type'] == 'dropout':
 				out_filters.append(prev_filters)
-				out_heights.append(prev_height)
-				out_widths.append(prev_width)
+				out_strides.append(prev_stride)
 				prob = block['probability']
 				model = nn.Dropout(p=prob)
 				models.append(model)
 			elif block['layer_type'] == 'detection':
 				out_filters.append(prev_filters)
-				out_heights.append(prev_height)
-				out_widths.append(prev_width)
+				out_strides.append(prev_stride)
 				'''
 				num_classes = block['classes']
 				num_boxes = block['num']
@@ -302,17 +304,15 @@ class Darknet(nn.Module):
 				noobject_scale = block['noobject_scale']
 				class_scale = block['class_scale']
 				coord_scale = block['coord_scale']
-
 				'''
+				
 			elif block['layer_type'] == 'region':
 				out_filters.append(prev_filters)
-				out_heights.append(prev_height)
-				out_widths.append(prev_width)
+				out_strides.append(prev_stride)
 				num_anchors = int(block['num'])
 				num_classes = int(block['classes'])
 				stride = self.options.get('stride')
 				anchors = [float(i) for i in block['anchors'].split(',')]
-				num_anchors = int(block['num'])
 				noobject_scale = float(block['noobject_scale'])
 				object_scale = float(block['object_scale'])
 				sil_thresh = float(block['thresh'])
@@ -324,7 +324,6 @@ class Darknet(nn.Module):
 												  num_classes=num_classes,
 												  stride=stride,
 												  anchors=anchors,
-												  num_anchors=num_anchors,
 												  noobject_scale=noobject_scale,
 												  object_scale=object_scale,
 												  sil_thresh=sil_thresh,
@@ -335,9 +334,7 @@ class Darknet(nn.Module):
 				models.append(reLayer)
 			elif block['layer_type'] == 'yolo':
 				out_filters.append(prev_filters)
-				out_heights.append(prev_height)
-				out_widths.append(prev_width)
-
+				out_strides.append(prev_stride)
 			else:
 				print('[Error]:unkown layer_type <%s>...' % (block['layer_type']))
 				sys.exit(0)

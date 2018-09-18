@@ -31,11 +31,13 @@ class myDataset(Dataset):
 		shuffle = kwargs.get('shuffle')
 		with open(root[0], 'r') as file:
 			self.imgpaths = file.readlines()
-		with open(root[1], 'r') as file:
-			self.labpaths = file.readlines()
-		assert len(self.imgpaths) == len(self.labpaths)
+		if root[1] is not None:
+			with open(root[1], 'r') as file:
+				self.labpaths = file.readlines()
+			assert len(self.imgpaths) == len(self.labpaths)
 		if shuffle:
 			random.shuffle(self.imgpaths)
+		self.root = root
 		self.nSamples  = len(self.imgpaths)
 		self.transform = kwargs.get('transform')
 		self.target_transform = kwargs.get('target_transform')
@@ -49,13 +51,16 @@ class myDataset(Dataset):
 		self.hue = kwargs.get('hue')
 		self.saturation = kwargs.get('saturation')
 		self.exposure = kwargs.get('exposure')
-		self.max_boxes = self.max_boxes
+		self.max_object = kwargs.get('max_object')
 	def __len__(self):
 		return self.nSamples
 	def __getitem__(self, index):
 		assert index <= len(self)
 		imgpath = self.imgpaths[index].rstrip()
-		labpath = self.labpaths[index].rstrip()
+		if self.root[1] is None:
+			labpath = imgpath.replace('images', 'labels').replace('JPEGImages', 'labels').replace('.jpg', '.txt').replace('.png', '.txt')
+		else:
+			labpath = self.labpaths[index].rstrip()
 		if self.is_multiscale:
 			if self.is_train and index % 64 == 0:
 				if self.seen < 4000*64:
@@ -74,12 +79,12 @@ class myDataset(Dataset):
 					width = (random.randint(0, 9) + 10) * 32
 					self.shape = (width, width)
 		if self.is_train:
-			img, label = load_detection_daug(imgpath, labpath, self.shape, self.jitter, self.hue, self.saturation, self.exposure, max_boxes=self.max_boxes)
+			img, label = load_detection_daug(imgpath, labpath, self.shape, self.jitter, self.hue, self.saturation, self.exposure, max_object=self.max_object)
 		else:
 			img = Image.open(imgpath).convert('RGB')
 			if self.shape:
 				img = img.resize(self.shape)
-			label = torch.zeros(self.max_boxes*5)
+			label = torch.zeros(self.max_object*5)
 			try:
 				tmp = torch.from_numpy(read_truths(labpath, 8.0/img.width).astype('float32'))
 			except Exception:
@@ -87,8 +92,8 @@ class myDataset(Dataset):
 				tmp = torch.zeros(1, 5)
 			tmp = tmp.view(-1)
 			tmp_size = tmp.numel()
-			if tmp_size > self.max_boxes * 5:
-				label = tmp[0: self.max_boxes*5]
+			if tmp_size > self.max_object * 5:
+				label = tmp[0: self.max_object*5]
 			elif tmp_size > 0:
 				label[0: tmp_size] = tmp
 		if self.transform is not None:

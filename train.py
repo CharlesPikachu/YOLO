@@ -9,6 +9,7 @@ import sys
 import math
 import time
 import config
+import torch.nn as nn
 import torch.optim as optim
 from layers import *
 from utils.utils import *
@@ -45,23 +46,29 @@ class train():
 	# train for one epoch.
 	def __train_epoch(self, epoch):
 		if self.ngpus > 1:
-			cur_model = model.module
+			cur_model = self.model.module
 		else:
-			cur_model = model
+			cur_model = self.model
 		train_loader = torch.utils.data.DataLoader(
-							myDataset(self.tarinSet,
+							myDataset(root=[self.trainSet, self.labpath],
 									  shape=(self.init_width, self.init_height),
 									  shuffle=True,
 									  transform=transforms.Compose([transforms.ToTensor(),]),
 									  is_train=True,
 									  seen=cur_model.seen,
 									  batch_size=self.batch_size,
-									  num_workers=self.num_workers),
+									  num_workers=self.num_workers,
+									  is_multiscale=self.is_multiscale,
+									  jitter=self.jitter,
+									  hue=self.hue,
+									  saturation=self.saturation,
+									  exposure=self.exposure,
+									  max_object=self.max_object),
 							batch_size=self.batch_size,
 							shuffle=False,
 							**self.kwargs)
 		logging('epoch %d, processed %d samples, processed_batches %f' % (epoch, epoch * len(train_loader.dataset), self.processed_batches))
-		model.train()
+		self.model.train()
 		for batch_idx, (data, target) in enumerate(train_loader):
 			t0 = time.time()
 			lr = self.__adjust_lr(self.optimizer, self.processed_batches)
@@ -70,7 +77,7 @@ class train():
 				data = data.cuda()
 			data, target = Variable(data), Variable(target)
 			self.optimizer.zero_grad()
-			loss = model(data, target)
+			loss = self.model(data, target)
 			loss.backward()
 			self.optimizer.step()
 			t1 = time.time()
@@ -86,14 +93,16 @@ class train():
 		self.gpus = self.options.get('gpus')
 		self.ngpus = self.options.get('ngpus')
 		self.save_interval = self.options.get('save_interval')
-		self.tarinSet = self.options.get('tarinSet')
+		self.trainSet = self.options.get('trainSet')
 		self.testSet = self.options.get('testSet')
+		self.labpath = self.options.get('labpath')
 		self.num_workers = self.options.get('num_workers')
 		self.is_multiscale = self.options.get('is_multiscale')
 		self.weightfile = self.options.get('weightfile')
-		self.nsamples = file_lines(self.tarinSet)
+		self.nsamples = file_lines(self.trainSet)
 		self.batch_size = int(self.net_options.get('batch'))
 		self.max_batches = int(self.net_options.get('max_batches'))
+		self.max_object = self.options.get('max_object')
 		self.learning_rate = float(self.net_options.get('learning_rate'))
 		self.steps = [float(step) for step in self.net_options.get('steps').split(',')]
 		self.scales = [float(scale) for scale in self.net_options.get('scales').split(',')]
@@ -112,8 +121,8 @@ class train():
 		if self.options.get('weightfile'):
 			self.model.load_weights(weightfile)
 			print('[INFO]: %s loaded...' % weightfile)
-		self.init_width = self.net_options.get('width')
-		self.init_height = self.net_options.get('height')
+		self.init_width = int(self.net_options.get('width'))
+		self.init_height = int(self.net_options.get('height'))
 		self.init_epoch = self.model.seen // self.nsamples
 		self.processed_batches = self.model.seen // self.nsamples
 		self.kwargs = {'num_workers': self.num_workers, 'pin_memory': True} if self.use_cuda else {}

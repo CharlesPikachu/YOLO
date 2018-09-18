@@ -573,8 +573,8 @@ def data_augmentation(img, shape, jitter, hue, saturation, exposure):
 	return img, flip, dx, dy, sx, sy
 
 # get modified label after data augmentation.
-def modify_truth_detection(labpath, flip, dx, dy, sx, sy, max_boxes):
-	label = np.zeros((max_boxes, 5))
+def modify_truth_detection(labpath, flip, dx, dy, sx, sy, max_object):
+	label = np.zeros((max_object, 5))
 	if os.path.getsize(labpath):
 		bs = np.loadtxt(labpath)
 		if bs is None:
@@ -605,12 +605,12 @@ def modify_truth_detection(labpath, flip, dx, dy, sx, sy, max_boxes):
 
 # load detection data after data augmentation
 def load_detection_daug(imgpath, labpath, shape, jitter, hue, saturation, exposure, **kwargs):
-	max_boxes = kwargs.get('max_boxes')
-	if not max_boxes:
-		max_boxes = 50
+	max_object = kwargs.get('max_object')
+	if not max_object:
+		max_object = 50
 	img = Image.open(imgpath).convert('RGB')
 	img, flip, dx, dy, sx, sy = data_augmentation(img, shape, jitter, hue, saturation, exposure)
-	label = modify_truth_detection(labpath, flip, dx, dy, 1./sx, 1./sy, max_boxes=max_boxes)
+	label = modify_truth_detection(labpath, flip, dx, dy, 1./sx, 1./sy, max_object=max_object)
 	return img, label
 # ----------------------------------------------------------------------------------------------------------------------------------
 
