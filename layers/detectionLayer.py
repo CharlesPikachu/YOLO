@@ -12,9 +12,18 @@ from torch.autograd import Variable
 
 '''
 Function:
+	get targets, for yoloV1.
+'''
+def build_targets(**kwargs):
+	pred_boxes = kwargs.get('pred_boxes')
+	target = kwargs.get('target')
+
+
+'''
+Function:
 	detectionLayer
-	output: (batch_size, num_anchors, (num_classes+5), nH, nW)
-	target: (class, x, y, w, h)
+	output: (batch_size, nH, nW, nA*5+nC)
+	target: (batch_size, (class, x, y, w, h))
 '''
 class detectionLayer(nn.Module):
 	def __init__(self, **kwargs):
@@ -22,4 +31,11 @@ class detectionLayer(nn.Module):
 		self.options = kwargs
 	# for forward
 	def forward(self, output, target):
-		coord_mask = target[:, :, :, ]
+		output = output.view(nB, nH, nW, nA*5+nC)
+		nB = output.data.size(0)
+		nA = self.options.get('num_anchors')
+		nC = self.options.get('num_classes')
+		nH = output.data.size(1)
+		nW = output.data.size(2)
+		# x = 
+

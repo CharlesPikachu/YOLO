@@ -113,7 +113,7 @@ def build_targets(**kwargs):
 Function:
 	regionLayer, for yoloV2
 	output: (batch_size, num_anchors, (num_classes+5), nH, nW)
-	target: (class, x, y, w, h)
+	target: (batch_size, (class, x, y, w, h))
 '''
 class regionLayer(nn.Module):
 	def __init__(self, **kwargs):

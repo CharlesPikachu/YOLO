@@ -116,15 +116,22 @@ class Darknet(nn.Module):
 	def forward(self, x, target=None):
 		self.seen += x.data.size(0)
 		ind = -2
-		loss = None
+		loss = 0
 		outputs = dict()
 		for block in self.blocks:
 			ind += 1
 			if block['layer_type'] == 'net':
 				continue
-			elif block['layer_type'] in ['convolutional', 'maxpool', 'reorg', 'upsample', 'avgpool', 'softmax', 'connected', 'local', 'dropout']:
+			elif block['layer_type'] in ['convolutional', 'maxpool', 'reorg', 'upsample', 'avgpool', 'softmax', 'local', 'dropout']:
 				x = self.models[ind](x)
 				outputs[ind] = x
+			elif block['layer_type'] == 'connected':
+				batch_size = x.size(0)
+				height = x.size(2)
+				width = x.size(3)
+				x = x.view(x.size(0), -1)
+				x = self.models[ind](x)
+				x = x.view((batch_size, -1, height, width))
 			elif block['layer_type'] == 'route':
 				layers = block['layers'].split(',')
 				layers = [int(i) if int(i) > 0 else int(i)+ind for i in layers]
@@ -148,19 +155,11 @@ class Darknet(nn.Module):
 				elif activation == 'relu':
 					x = F.relu(x, inplace=True)
 				outputs[ind] = x
-			# yoloV1
-			elif block['layer_type'] == 'detection':
-				self.models[ind].seen = self.seen
-				pass
-			# yoloV2
-			elif block['layer_type'] == 'region':
+			# yoloV1, yoloV2, yoloV3
+			elif block['layer_type'] in ['detection', 'region', 'yolo']:
 				if self.options.get('mode') == 'train':
 					self.models[ind].seen = self.seen
-					loss = self.models[ind](x, target)
-			# yoloV3
-			elif block['layer_type'] == 'yolo':
-				self.models[ind].seen = self.seen
-				pass
+					loss += self.models[ind](x, target)
 			# for resnet, too lazy to realize, o(╥﹏╥)o
 			elif block['layer_type'] == 'cost':
 				continue
@@ -180,6 +179,8 @@ class Darknet(nn.Module):
 		prev_stride = 1
 		for block in self.blocks:
 			if block['layer_type'] == 'net':
+				init_width = int(block['width'])
+				init_height = int(block['height'])
 				prev_filters = int(block['channels'])
 				continue
 			elif block['layer_type'] in ['convolutional', 'local']:
@@ -275,8 +276,9 @@ class Darknet(nn.Module):
 				models.append(EmptyModule())
 			elif block['layer_type'] == 'connected':
 				filters = int(block['output'])
+				stride = out_strides[-1]
 				if block['activation'] == 'linear':
-					model = nn.Linear(prev_filters, filters)
+					model = nn.Linear(prev_filters * (init_height//stride) * (init_width//stride), filters)
 				elif block['activation'] == 'leaky':
 					model = nn.Sequential(
 								nn.Linear(prev_filters, filters),
@@ -292,20 +294,24 @@ class Darknet(nn.Module):
 			elif block['layer_type'] == 'dropout':
 				out_filters.append(prev_filters)
 				out_strides.append(prev_stride)
-				prob = block['probability']
+				prob = float(block['probability'])
 				model = nn.Dropout(p=prob)
 				models.append(model)
 			elif block['layer_type'] == 'detection':
 				out_filters.append(prev_filters)
 				out_strides.append(prev_stride)
-				'''
-				num_classes = block['classes']
-				num_boxes = block['num']
-				object_scale = block['object_scale']
-				noobject_scale = block['noobject_scale']
-				class_scale = block['class_scale']
-				coord_scale = block['coord_scale']
-				'''
+				num_boxes = int(block['num'])
+				num_classes = int(block['classes'])
+				object_scale = float(block['object_scale'])
+				noobject_scale = float(block['noobject_scale'])
+				class_scale = float(block['class_scale'])
+				coord_scale = float(block['coord_scale'])
+				deLayer = detectionLayer.detectionLayer(num_classes=num_classes,
+														coord_scale=coord_scale,
+														class_scale=class_scale,
+														noobject_scale=noobject_scale,
+														object_scale=object_scale)
+				
 				
 			elif block['layer_type'] == 'region':
 				out_filters.append(prev_filters)
@@ -336,6 +342,7 @@ class Darknet(nn.Module):
 			elif block['layer_type'] == 'yolo':
 				out_filters.append(prev_filters)
 				out_strides.append(prev_stride)
+
 			else:
 				print('[Error]:unkown layer_type <%s>...' % (block['layer_type']))
 				sys.exit(0)
