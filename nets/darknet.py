@@ -107,9 +107,10 @@ class Darknet(nn.Module):
 	def __init__(self, options):
 		super(Darknet, self).__init__()
 		self.blocks = CfgParser().parser(options.get('cfgfile'), is_print=True)
-		# record some information.
+		# record some information of the model.
 		self.header = torch.IntTensor([0, 0, 0, 0, 0])
 		self.seen = self.header[3]
+		self.det_strides = []
 		self.options = options
 		self.models = self.create_network()
 	# net forward
@@ -117,6 +118,7 @@ class Darknet(nn.Module):
 		self.seen += x.data.size(0)
 		ind = -2
 		loss = 0
+		res = []
 		outputs = dict()
 		for block in self.blocks:
 			ind += 1
@@ -129,9 +131,10 @@ class Darknet(nn.Module):
 				batch_size = x.size(0)
 				height = x.size(2)
 				width = x.size(3)
+				x = x.transpose(1, 3).transpose(1, 2).contiguous()
 				x = x.view(x.size(0), -1)
 				x = self.models[ind](x)
-				x = x.view((batch_size, -1, height, width))
+				# x = x.view((batch_size, height, width, -1))
 			elif block['layer_type'] == 'route':
 				layers = block['layers'].split(',')
 				layers = [int(i) if int(i) > 0 else int(i)+ind for i in layers]
@@ -160,6 +163,8 @@ class Darknet(nn.Module):
 				if self.options.get('mode') == 'train':
 					self.models[ind].seen = self.seen
 					loss += self.models[ind](x, target)
+				else:
+					res.append(x)
 			# for resnet, too lazy to realize, o(╥﹏╥)o
 			elif block['layer_type'] == 'cost':
 				continue
@@ -169,7 +174,7 @@ class Darknet(nn.Module):
 		if self.options.get('mode') == 'train':
 			return loss
 		else:
-			return x
+			return x if len(res) < 2 else res
 	# create netword
 	def create_network(self):
 		models = nn.ModuleList()
@@ -311,38 +316,43 @@ class Darknet(nn.Module):
 														class_scale=class_scale,
 														noobject_scale=noobject_scale,
 														object_scale=object_scale)
-				
-				
+				models.append(deLayer)
+				self.det_strides.append(prev_stride)
 			elif block['layer_type'] == 'region':
 				out_filters.append(prev_filters)
 				out_strides.append(prev_stride)
 				num_anchors = int(block['num'])
 				num_classes = int(block['classes'])
-				stride = self.options.get('stride')
 				anchors = [float(i) for i in block['anchors'].split(',')]
 				noobject_scale = float(block['noobject_scale'])
 				object_scale = float(block['object_scale'])
 				sil_thresh = float(block['thresh'])
 				seen = self.seen
 				max_object = self.options.get('max_object')
+				by_stride = self.options.get('by_stride')
 				coord_scale = float(block['coord_scale'])
 				class_scale = float(block['class_scale'])
 				reLayer = regionLayer.regionLayer(num_anchors=num_anchors,
 												  num_classes=num_classes,
-												  stride=stride,
+												  stride=prev_stride,
 												  anchors=anchors,
 												  noobject_scale=noobject_scale,
 												  object_scale=object_scale,
 												  sil_thresh=sil_thresh,
 												  seen=seen,
 												  max_object=max_object,
+												  by_stride=by_stride,
 												  coord_scale=coord_scale,
 												  class_scale=class_scale)
+				self.det_strides.append(prev_stride)
 				models.append(reLayer)
 			elif block['layer_type'] == 'yolo':
 				out_filters.append(prev_filters)
 				out_strides.append(prev_stride)
 
+				yoLayer = yoloLayer.yoloLayer()
+				models.append(yoLayer)
+				self.det_strides.append(prev_stride)
 			else:
 				print('[Error]:unkown layer_type <%s>...' % (block['layer_type']))
 				sys.exit(0)
@@ -351,7 +361,7 @@ class Darknet(nn.Module):
 	def load_weights(self, weightfile):
 		with open(weightfile, 'rb') as fp:
 			# before yolo3, weights get from https://github.com/pjreddie/darknet count = 4.
-			header = np.fromfile(fp, count=4, dtype=np.int32)
+			header = np.fromfile(fp, count=5, dtype=np.int32)
 			self.header = torch.from_numpy(header)
 			self.seen = self.header[3]
 			buf = np.fromfile(fp, dtype=np.float32)

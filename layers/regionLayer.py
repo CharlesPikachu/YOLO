@@ -134,7 +134,11 @@ class regionLayer(nn.Module):
 		# number of grids is 'H * N'
 		nH = output.data.size(2)
 		nW = output.data.size(3)
-		anchors = [anchor/self.options.get('stride') for anchor in self.options.get('anchors')]
+		# decided by anchors in .cfg file.
+		if self.options.get('by_stride'):
+			anchors = [anchor/self.options.get('stride') for anchor in self.options.get('anchors')]
+		else:
+			anchors = self.options.get('anchors')
 		# 5 -> (x, y, w, h) and box confidence.
 		output = output.view(nB, nA, (5+nC), nH, nW)
 		x = F.sigmoid(output.index_select(2, Variable(torch.cuda.LongTensor([0]))).view(nB, nA, nH, nW))

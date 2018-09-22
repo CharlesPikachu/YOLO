@@ -627,33 +627,39 @@ def get_boxes_yolo1(output, **kwargs):
 	conf_thresh = kwargs.get('conf_thresh')
 	if output.dim() == 3:
 		output = output.unsqueeze(0)
-	assert output.size(1) == 5 * num_anchors + num_classes
+	assert output.size(3) == 5 * num_anchors + num_classes
 	output = convert2cpu(output)
 	nB = output.size(0)
-	nH = output.size(2)
-	nW = output.size(3)
+	nH = output.size(1)
+	nW = output.size(2)
 	all_boxes = []
+	class_probs = output[:, :7*7*20]
+	'''
 	for b in range(nB):
 		boxes = []
 		for cy in range(nH):
 			for cx in range(nW):
 				box = []
+				cls_ = output.index_select(3, torch.linspace(5*i, 5+num_classes-1, num_classes).long())[b, cy, cx, :]
 				for i in range(num_anchors):
-					bcx = output.index_select(1, torch.LongTensor([i*5])).view(nB, nH, nW)[b, cy, cx]
-					bcy = output.index_select(1, torch.LongTensor([i*5+1])).view(nB, nH, nW)[b, cy, cx]
-					bw = output.index_select(1, torch.LongTensor([i*5+2])).view(nB, nH, nW)[b, cy, cx]
-					bh = output.index_select(1, torch.LongTensor([i*5+3])).view(nB, nH, nW)[b, cy, cx]
-					det_conf = output.index_select(1, torch.LongTensor([i*5+4])).view(nB, nH, nW)[b, cy, cx]
+					bcx = output.index_select(3, torch.LongTensor([i*5])).view(nB, nH, nW)[b, cy, cx]
+					bcy = output.index_select(3, torch.LongTensor([i*5+1])).view(nB, nH, nW)[b, cy, cx]
+					bw = output.index_select(3, torch.LongTensor([i*5+2])).view(nB, nH, nW)[b, cy, cx]
+					bh = output.index_select(3, torch.LongTensor([i*5+3])).view(nB, nH, nW)[b, cy, cx]
+					det_conf = output.index_select(3, torch.LongTensor([i*5+4])).view(nB, nH, nW)[b, cy, cx]
 					box.append([bcx, bcy, bw, bh, det_conf])
-				cls_ = output.index_select(1, torch.linspace(5*i, 5+num_classes-1, num_classes).long())[b, :, cy, cx]
 				cls_max_conf, cls_max_id = torch.max(cls_, 0)
 				for each in box:
 					boxes.append([each[0], each[1], each[2], each[3], each[4], cls_max_conf, int(cls_max_id)])
 		all_boxes.append(boxes)
+	'''
 	return all_boxes
 
 def get_boxes_yolo2(output, **kwargs):
 	anchors = kwargs.get('anchors')
+	stride = kwargs.get('stride')
+	if kwargs.get('by_stride'):
+		anchors = [anchor/stride for anchor in anchors]
 	num_anchors = kwargs.get('num_anchors')
 	num_classes = kwargs.get('num_classes')
 	conf_thresh = kwargs.get('conf_thresh')
@@ -711,7 +717,32 @@ def get_boxes_yolo2(output, **kwargs):
 	return all_boxes
 
 def get_boxes_yolo3(output, **kwargs):
-	pass
+	anchors = kwargs.get('anchors')
+	strides = kwargs.get('stride')
+	num_anchors = kwargs.get('num_anchors')
+	num_classes = kwargs.get('num_classes')
+	conf_thresh = kwargs.get('conf_thresh')
+	anchor_masks = kwargs.get('anchor_masks')
+	anchor_step = len(anchors) // num_anchors
+	all_boxes = []
+	for i in range(len(output)):
+		anchor_mask = anchor_masks[i]
+		stride = strides[i]
+		op = output[i].data
+		anchors_now = []
+		for m in anchor_mask:
+			anchors_now += anchors[m * anchor_step: (m+1) * anchor_step]
+		if kwargs.get('by_stride'):
+			anchors_now = [anchor/stride for anchor in anchors_now]
+		boxes = get_boxes_yolo2(op,
+								by_stride=False,
+								anchors=anchors_now,
+								stride=stride,
+								num_anchors=len(anchors_now)//anchor_step,
+								num_classes=num_classes,
+								conf_thresh=conf_thresh)
+		all_boxes.append(boxes[0])
+	return all_boxes
 # ----------------------------------------------------------------------------------------------------------------------------------
 
 
