@@ -78,6 +78,8 @@ class train():
 			data, target = Variable(data), Variable(target)
 			self.optimizer.zero_grad()
 			loss = self.model(data, target)
+			if self.ngpus > 1:
+				loss = loss.sum()
 			loss.backward()
 			self.optimizer.step()
 			t1 = time.time()
@@ -157,5 +159,6 @@ class train():
 
 
 if __name__ == '__main__':
-	t = train(yolo_type='yolo2')
+	# t = train(yolo_type='yolo2')
+	t = train(yolo_type='yolo3')
 	t.start()

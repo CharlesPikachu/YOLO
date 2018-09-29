@@ -128,13 +128,10 @@ class Darknet(nn.Module):
 				x = self.models[ind](x)
 				outputs[ind] = x
 			elif block['layer_type'] == 'connected':
-				batch_size = x.size(0)
-				height = x.size(2)
-				width = x.size(3)
 				x = x.transpose(1, 3).transpose(1, 2).contiguous()
 				x = x.view(x.size(0), -1)
 				x = self.models[ind](x)
-				# x = x.view((batch_size, height, width, -1))
+				outputs[ind] = x
 			elif block['layer_type'] == 'route':
 				layers = block['layers'].split(',')
 				layers = [int(i) if int(i) > 0 else int(i)+ind for i in layers]
@@ -286,11 +283,11 @@ class Darknet(nn.Module):
 					model = nn.Linear(prev_filters * (init_height//stride) * (init_width//stride), filters)
 				elif block['activation'] == 'leaky':
 					model = nn.Sequential(
-								nn.Linear(prev_filters, filters),
+								nn.Linear(prev_filters * (init_height//stride) * (init_width//stride), filters),
 								nn.LeakyReLU(0.1, inplace=True))
 				elif block['activation'] == 'relu':
 					model = nn.Sequential(
-								nn.Linear(prev_filters, filters),
+								nn.Linear(prev_filters * (init_height//stride) * (init_width//stride), filters),
 								nn.ReLU(inplace=True))
 				prev_filters = filters
 				out_filters.append(prev_filters)
@@ -349,8 +346,34 @@ class Darknet(nn.Module):
 			elif block['layer_type'] == 'yolo':
 				out_filters.append(prev_filters)
 				out_strides.append(prev_stride)
-
-				yoLayer = yoloLayer.yoloLayer()
+				num_anchors = int(block['num'])
+				num_classes = int(block['classes'])
+				all_anchors = [float(i) for i in block['anchors'].split(',')]
+				anchor_mask = [int(i) for i in block['mask'].split(',')]
+				anchor_step = len(all_anchors) // num_anchors
+				anchors = []
+				for m in anchor_mask:
+					anchors += all_anchors[m*anchor_step: (m+1)*anchor_step]
+				noobject_scale = float(block['noobject_scale'])
+				object_scale = float(block['object_scale'])
+				sil_thresh = float(block['thresh'])
+				seen = self.seen
+				max_object = self.options.get('max_object')
+				by_stride = self.options.get('by_stride')
+				coord_scale = float(block['coord_scale'])
+				class_scale = float(block['class_scale'])
+				yoLayer = yoloLayer.yoloLayer(num_anchors=len(anchor_mask),
+											  num_classes=num_classes,
+											  stride=prev_stride,
+											  anchors=anchors,
+											  noobject_scale=noobject_scale,
+											  object_scale=object_scale,
+											  sil_thresh=sil_thresh,
+											  seen=seen,
+											  max_object=max_object,
+											  by_stride=by_stride,
+											  coord_scale=coord_scale,
+											  class_scale=class_scale)
 				models.append(yoLayer)
 				self.det_strides.append(prev_stride)
 			else:

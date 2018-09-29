@@ -64,7 +64,10 @@ def Demo(yolo_type='yolo2'):
 				boxes = get_boxes_yolo1(output,
 										conf_thresh=conf_thresh,
 										num_classes=num_classes,
-										num_anchors=num_anchors)[0]
+										num_anchors=num_anchors,
+										width=width,
+										height=height,
+										stride=model.det_strides[0])[0]
 				bboxes = nms(boxes, nms_thresh)
 				draw_img = plot_boxes_cv2(img, bboxes, class_names)
 				cv2.imshow('yolo1', draw_img)
