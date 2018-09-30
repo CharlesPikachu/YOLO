@@ -43,10 +43,10 @@ class myDataset(Dataset):
 		self.target_transform = kwargs.get('target_transform')
 		self.is_train = kwargs.get('is_train')
 		self.shape = shape
-		self.seen = kwargs.get('seen')
+		self.seen = kwargs.get('seen') if kwargs.get('seen') else 1
 		self.batch_size = kwargs.get('batch_size')
-		self.num_workers = kwargs.get('num_workers')
-		self.is_multiscale = kwargs.get('multiscale')
+		self.num_workers = kwargs.get('num_workers') if kwargs.get('num_workers') else 1
+		self.is_multiscale = kwargs.get('is_multiscale')
 		self.jitter = kwargs.get('jitter')
 		self.hue = kwargs.get('hue')
 		self.saturation = kwargs.get('saturation')
@@ -86,7 +86,7 @@ class myDataset(Dataset):
 				img = img.resize(self.shape)
 			label = torch.zeros(self.max_object*5)
 			try:
-				tmp = torch.from_numpy(read_truths(labpath, 8.0/img.width).astype('float32'))
+				tmp = torch.from_numpy(read_truths(labpath, min_box_scale=8.0/img.width, is_changed=True).astype('float32'))
 			except Exception:
 				print('[Warning]:%s has no data...' % labpath)
 				tmp = torch.zeros(1, 5)

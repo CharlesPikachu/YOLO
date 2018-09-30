@@ -212,4 +212,5 @@ class regionLayer(nn.Module):
 		loss_conf = nn.MSELoss(size_average=False)(conf*conf_mask, tconf*conf_mask)/2.0
 		loss_cls = class_scale * nn.CrossEntropyLoss(size_average=False)(cls_, tcls)
 		loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
+		print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data[0], loss_y.data[0], loss_w.data[0], loss_h.data[0], loss_conf.data[0], loss_cls.data[0], loss.data[0]))
 		return loss

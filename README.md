@@ -12,7 +12,7 @@ A pytorch implementation of YOLOv1-v3
 - [x] Train the model of YOLOv3.
 - [x] Data augmentation.
 - [ ] Using k-means to generate the bounding box.
-- [ ] Evaluate the model including mAP, precision, recall, etc.
+- [x] Evaluate the model including mAP, precision, recall, etc.
 - [ ] Data of VOC format -> YOLO format.
 
 # Train

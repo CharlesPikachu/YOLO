@@ -14,6 +14,7 @@ import torch.optim as optim
 from layers import *
 from utils.utils import *
 from nets.darknet import Darknet
+from evalpg.eval import evalModel
 from torchvision import transforms
 from torch.autograd import Variable
 from dataset.dataset import myDataset
@@ -28,6 +29,7 @@ Input:
 # ----------------------------------------------------------------------------------------------------------------------------------
 class train():
 	def __init__(self, yolo_type='yolo2'):
+		self.yolo_type = yolo_type
 		if yolo_type == 'yolo1':
 			self.options = config.yolo1_options
 		elif yolo_type == 'yolo2':
@@ -50,7 +52,7 @@ class train():
 		else:
 			cur_model = self.model
 		train_loader = torch.utils.data.DataLoader(
-							myDataset(root=[self.trainSet, self.labpath],
+							myDataset(root=[self.trainSet, self.trainlabpth],
 									  shape=(self.init_width, self.init_height),
 									  shuffle=True,
 									  transform=transforms.Compose([transforms.ToTensor(),]),
@@ -70,7 +72,6 @@ class train():
 		logging('epoch %d, processed %d samples, processed_batches %f' % (epoch, epoch * len(train_loader.dataset), self.processed_batches))
 		self.model.train()
 		for batch_idx, (data, target) in enumerate(train_loader):
-			t0 = time.time()
 			lr = self.__adjust_lr(self.optimizer, self.processed_batches)
 			self.processed_batches += 1
 			if self.use_cuda:
@@ -82,12 +83,11 @@ class train():
 				loss = loss.sum()
 			loss.backward()
 			self.optimizer.step()
-			t1 = time.time()
-			logging('training with %f samples/s' % (data.size(0) / (t1-t0)))
 			if ((epoch + 1) % self.save_interval == 0) or ((epoch + 1) == self.max_epochs):
 				logging('save weights to %s/%06d.weights' % (backupdir, epoch+1))
 				cur_model.seen = (epoch + 1) * len(train_loader.dataset)
 				cur_model.save_weights('%s/%06d.weights' % (backupdir, epoch+1))
+				self.EM.eval(self.model)
 	# initialization
 	def __initialization(self):
 		self.use_cuda = self.options.get('use_cuda')
@@ -97,7 +97,8 @@ class train():
 		self.save_interval = self.options.get('save_interval')
 		self.trainSet = self.options.get('trainSet')
 		self.testSet = self.options.get('testSet')
-		self.labpath = self.options.get('labpath')
+		self.trainlabpth = self.options.get('trainlabpth')
+		self.testlabpth = self.options.get('testlabpth')
 		self.num_workers = self.options.get('num_workers')
 		self.is_multiscale = self.options.get('is_multiscale')
 		self.weightfile = self.options.get('weightfile')
@@ -138,6 +139,21 @@ class train():
 								   momentum=self.momentum, 
 								   dampening=0, 
 								   weight_decay=self.decay*self.batch_size)
+		self.EM = evalModel(num_workers=self.num_workers,
+							use_cuda=self.use_cuda,
+							testSet=self.testSet,
+							testlabpth=self.testlabpth,
+							init_width=self.init_width,
+							init_height=self.init_height,
+							batch_size=self.batch_size,
+							ngpus=self.ngpus,
+							by_stride=self.options.get('by_stride'),
+							conf_thresh=self.options.get('conf_thresh'),
+							iou_thresh=self.options.get('iou_thresh'),
+							max_object=self.max_object,
+							is_multiscale=self.is_multiscale,
+							yolo_type=self.yolo_type,
+							nms_thresh=self.options.get('nms_thresh'))
 	# adjust learning rate.
 	def __adjust_lr(self, optimizer, batch_idx):
 		lr = self.learning_rate

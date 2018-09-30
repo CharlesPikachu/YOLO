@@ -497,7 +497,7 @@ def read_truths(lab_path, **kwargs):
 				if truths[i][3] < min_box_scale:
 					continue
 				new_truths.append([truths[i][0], truths[i][1], truths[i][2], truths[i][3], truths[i][4]])
-			return new_truths
+			return np.array(new_truths)
 		return truths
 	else:
 		return np.array([])
@@ -687,8 +687,7 @@ def get_boxes_yolo2(output, **kwargs):
 				for i in range(num_anchors):
 					ind = b*sz_hwa + i*sz_hw + cy*w + cx
 					det_conf = det_confs[ind]
-					conf = det_confs[ind]
-					if conf > conf_thresh:
+					if det_conf > conf_thresh:
 						bcx = xs[ind]
 						bcy = ys[ind]
 						bw = ws[ind]
