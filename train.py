@@ -122,7 +122,7 @@ class train():
 			os.environ['CUDA_VISIBLE_DEVICES'] = self.gpus
 		self.model = Darknet(self.options)
 		if self.options.get('weightfile'):
-			self.model.load_weights(weightfile)
+			self.model.load_weights(self.options.get('weightfile'))
 			print('[INFO]: %s loaded...' % weightfile)
 		self.init_width = int(self.net_options.get('width'))
 		self.init_height = int(self.net_options.get('height'))
