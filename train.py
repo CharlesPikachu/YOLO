@@ -121,8 +121,9 @@ class train():
 		if self.use_cuda:
 			os.environ['CUDA_VISIBLE_DEVICES'] = self.gpus
 		self.model = Darknet(self.options)
-		if self.options.get('weightfile'):
-			self.model.load_weights(self.options.get('weightfile'))
+		weightfile = self.options.get('weightfile')
+		if weightfile:
+			self.model.load_weights(weightfile)
 			print('[INFO]: %s loaded...' % weightfile)
 		self.init_width = int(self.net_options.get('width'))
 		self.init_height = int(self.net_options.get('height'))
