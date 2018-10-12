@@ -69,7 +69,7 @@ class train():
 							batch_size=self.batch_size,
 							shuffle=False,
 							**self.kwargs)
-		logging('epoch %d, processed %d samples, processed_batches %f' % (epoch, epoch * len(train_loader.dataset), self.processed_batches))
+		logging('epoch %d, processed %d samples, processed_batches %d' % (epoch, epoch * len(train_loader.dataset), self.processed_batches))
 		self.model.train()
 		for batch_idx, (data, target) in enumerate(train_loader):
 			lr = self.__adjust_lr(self.optimizer, self.processed_batches)
@@ -78,15 +78,16 @@ class train():
 				data = data.cuda()
 			data, target = Variable(data), Variable(target)
 			self.optimizer.zero_grad()
+			cur_model.seen += data.data.size(0)
 			loss = self.model(data, target)
 			if self.ngpus > 1:
 				loss = loss.sum()
 			loss.backward()
 			self.optimizer.step()
 			if ((epoch + 1) % self.save_interval == 0) or ((epoch + 1) == self.max_epochs):
-				logging('save weights to %s/%06d.weights' % (backupdir, epoch+1))
+				logging('save weights to %s/%06d.weights' % (self.backupdir, epoch+1))
 				cur_model.seen = (epoch + 1) * len(train_loader.dataset)
-				cur_model.save_weights('%s/%06d.weights' % (backupdir, epoch+1))
+				cur_model.save_weights('%s/%06d.weights' % (self.backupdir, epoch+1))
 				self.EM.eval(self.model)
 	# initialization
 	def __initialization(self):

@@ -115,7 +115,6 @@ class Darknet(nn.Module):
 		self.models = self.create_network()
 	# net forward
 	def forward(self, x, target=None):
-		self.seen += x.data.size(0)
 		ind = -2
 		loss = 0
 		res = []
@@ -439,7 +438,7 @@ class Darknet(nn.Module):
 					save_conv_bn(fp, model[0], model[1])
 				else:
 					save_conv(fp, model[0])
-			elif block['type'] == 'connected':
+			elif block['layer_type'] == 'connected':
 				model = self.models[ind]
 				if block['activation'] != 'linear':
 					save_fc(fc, model[0])
