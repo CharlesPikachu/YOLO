@@ -84,11 +84,11 @@ class train():
 				loss = loss.sum()
 			loss.backward()
 			self.optimizer.step()
-			if ((epoch + 1) % self.save_interval == 0) or ((epoch + 1) == self.max_epochs):
-				logging('save weights to %s/%06d.weights' % (self.backupdir, epoch+1))
-				cur_model.seen = (epoch + 1) * len(train_loader.dataset)
-				cur_model.save_weights('%s/%06d.weights' % (self.backupdir, epoch+1))
-				self.EM.eval(self.model)
+		if ((epoch + 1) % self.save_interval == 0) or ((epoch + 1) == self.max_epochs):
+			logging('save weights to %s/%06d.weights' % (self.backupdir, epoch+1))
+			cur_model.seen = (epoch + 1) * len(train_loader.dataset)
+			cur_model.save_weights('%s/%06d.weights' % (self.backupdir, epoch+1))
+			self.EM.eval(self.model)
 	# initialization
 	def __initialization(self):
 		self.use_cuda = self.options.get('use_cuda')
