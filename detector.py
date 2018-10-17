@@ -204,6 +204,8 @@ def Demo(yolo_type='yolo2'):
 
 
 if __name__ == '__main__':
-	# Demo(yolo_type='yolo1')
-	# Demo(yolo_type='yolo2')
-	Demo(yolo_type='yolo3')
+	import argparse
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-v', '--version', help='Choose the version of yolo.')
+	args = parser.parse_args()
+	Demo(yolo_type=args.version)

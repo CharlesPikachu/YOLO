@@ -177,6 +177,9 @@ class train():
 
 
 if __name__ == '__main__':
-	# t = train(yolo_type='yolo2')
-	t = train(yolo_type='yolo3')
+	import argparse
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-v', '--version', help='Choose the version of yolo.')
+	args = parser.parse_args()
+	t = train(yolo_type=args.version)
 	t.start()

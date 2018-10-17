@@ -207,10 +207,16 @@ class yoloLayer(nn.Module):
 		class_scale = self.options.get('class_scale')
 		loss_x = coord_scale * nn.MSELoss(size_average=False)(x*coord_mask, tx*coord_mask)/2.0
 		loss_y = coord_scale * nn.MSELoss(size_average=False)(y*coord_mask, ty*coord_mask)/2.0
-		loss_w = coord_scale * nn.MSELoss(size_average=False)(w*coord_mask, tw*coord_mask)/2.0 * 0.2
-		loss_h = coord_scale * nn.MSELoss(size_average=False)(h*coord_mask, th*coord_mask)/2.0 * 0.2
-		loss_conf = nn.MSELoss(size_average=False)(conf*conf_mask, tconf*conf_mask)/2.0 * 0.2
-		loss_cls = class_scale * nn.BCELoss(size_average=False)(cls_, Variable(torch.zeros(cls_.shape).index_fill_(1, tcls.data.cpu().long(), 1.0)).cuda()) * 0.2
+		if self.seen < 12800:
+			loss_w = coord_scale * nn.MSELoss(size_average=False)(w*coord_mask, tw*coord_mask)/2.0 * 0.2
+			loss_h = coord_scale * nn.MSELoss(size_average=False)(h*coord_mask, th*coord_mask)/2.0 * 0.2
+			loss_conf = nn.MSELoss(size_average=False)(conf*conf_mask, tconf*conf_mask)/2.0 * 0.2
+			loss_cls = class_scale * nn.BCELoss(size_average=False)(cls_, Variable(torch.zeros(cls_.shape).index_fill_(1, tcls.data.cpu().long(), 1.0)).cuda()) * 0.2
+		else:
+			loss_w = coord_scale * nn.MSELoss(size_average=False)(w*coord_mask, tw*coord_mask)/2.0
+			loss_h = coord_scale * nn.MSELoss(size_average=False)(h*coord_mask, th*coord_mask)/2.0
+			loss_conf = nn.MSELoss(size_average=False)(conf*conf_mask, tconf*conf_mask)/2.0
+			loss_cls = class_scale * nn.BCELoss(size_average=False)(cls_, Variable(torch.zeros(cls_.shape).index_fill_(1, tcls.data.cpu().long(), 1.0)).cuda())
 		loss = (loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls) / 3
 		print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data[0], loss_y.data[0], loss_w.data[0], loss_h.data[0], loss_conf.data[0], loss_cls.data[0], loss.data[0]))
 		return loss

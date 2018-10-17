@@ -76,13 +76,12 @@ yolo3_options = {
 					'num_workers': 4,
 					'is_multiscale': True,
 					'by_stride': True,
-					# 'weightfile': './weights/yolov3.weights',
-					'weightfile': './darknet53.conv.74',
+					'weightfile': './weights/yolov3.weights',
 					'cfgfile': './cfg/yolov3.cfg',
 					'save_interval': 10,
 					'conf_thresh': 0.25,
 					'nms_thresh': 0.4,
 					'iou_thresh': 0.5,
 					'jitter': 0.3,
-					'mode': 'train'
+					'mode': 'test'
 				}

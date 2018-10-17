@@ -1,0 +1,6 @@
+torch 0.3.1
+opencv-python
+torchvision
+numpy
+pillow
+argparse
