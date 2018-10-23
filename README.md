@@ -67,3 +67,6 @@ preparing
 
 # Reference
 - [marvis](https://github.com/marvis/pytorch-yolo2)
+- [yolov1](https://arxiv.org/abs/1506.02640)
+- [yolov2](https://arxiv.org/abs/1612.08242)
+- [yolov3](https://pjreddie.com/media/files/papers/YOLOv3.pdf)
