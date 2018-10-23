@@ -20,6 +20,7 @@ pip install -r requirements.txt
 modify the config.py-yolo2_options
 - set mode -> train
 - set weightfile -> [darknet19_448.conv.23](https://pjreddie.com/media/files/darknet19_448.conv.23)
+- set clsnamesfile -> coco.names, voc.names, etc.
 - set trainSet, testSet, cfgfile, gpus, ngpus, etc.
 #### Step3: 
 run "python3 train.py --version yolo2"
@@ -30,6 +31,7 @@ pip install -r requirements.txt
 modify the config.py-yolo3_options  
 - set mode -> train
 - set weightfile -> [darknet53.conv.74](https://pjreddie.com/media/files/darknet53.conv.74)
+- set clsnamesfile -> coco.names, voc.names, etc.
 - set trainSet, testSet, cfgfile, gpus, ngpus, etc.
 #### Step3: 
 run "python3 train.py --version yolo3"
@@ -40,6 +42,7 @@ run "python3 train.py --version yolo3"
 modify the config.py-yolo2_options 
 - set mode - test
 - set weightfile -> [yolov2.weights](https://pjreddie.com/media/files/yolov2.weights)
+- set clsnamesfile -> coco.names, voc.names, etc.
 #### Step2:
 run "python3 detector.py --version yolo2"
 ## YOLOV3:
@@ -47,6 +50,7 @@ run "python3 detector.py --version yolo2"
 modify the config.py-yolo3_options 
 - set mode - test
 - set weightfile -> [yolov3.weights](https://pjreddie.com/media/files/yolov3.weights)
+- set clsnamesfile -> coco.names, voc.names, etc.
 #### Step2:
 run "python3 detector.py --version yolo3"
 
