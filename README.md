@@ -14,7 +14,7 @@ Project only supports python3.x.
 - [x] Data augmentation.
 - [x] Using k-means to generate the priors.
 - [x] Evaluate the model including mAP, precision, recall, etc.
-- [ ] Data of VOC format -> YOLO format.
+- [x] Data of VOC format -> YOLO format.
 
 # Dependency
 - torch 0.3.1
@@ -29,10 +29,10 @@ Project only supports python3.x.
 #### VOC -> YOLO
 ```sh
 Data of VOC format(lxml) -> YOLO format(txt).
-You can use the script in ./TOOL/voc2yolo.py to complete the conversion work.
+You can use the script in ./TOOL/voc2yolo.py to complete the work of conversion.
 ```
 - Usage
-	- modify Line<xx~xx> according to your needs
+	- modify Line<13~15> according to your needs
 	- run "python3 voc2yolo.py"
 #### Get good priors
 ```sh
