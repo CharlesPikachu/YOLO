@@ -12,7 +12,7 @@ Project only supports python3.x.
 - [x] Test the model of YOLOv3.
 - [x] Train the model of YOLOv3.
 - [x] Data augmentation.
-- [x] Using k-means to generate the bounding box.
+- [x] Using k-means to generate the priors.
 - [x] Evaluate the model including mAP, precision, recall, etc.
 - [ ] Data of VOC format -> YOLO format.
 
