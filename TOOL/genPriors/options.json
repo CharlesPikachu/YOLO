@@ -1,0 +1,6 @@
+{
+	"num_priors": 5,
+	"width": 416,
+	"height": 416,
+	"txtlable_dir": "/home/zcjin/VOCdevkit/VOC2007/labels"
+}

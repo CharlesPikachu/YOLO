@@ -4,6 +4,18 @@ A pytorch implementation of YOLOv1-v3.
 Project only supports python3.x.
 ```
 
+# To do
+- [ ] Test the model of YOLOv1.
+- [ ] Train the model of YOLOv1.
+- [x] Test the model of YOLOv2.
+- [x] Train the model of YOLOv2.
+- [x] Test the model of YOLOv3.
+- [x] Train the model of YOLOv3.
+- [x] Data augmentation.
+- [x] Using k-means to generate the bounding box.
+- [x] Evaluate the model including mAP, precision, recall, etc.
+- [ ] Data of VOC format -> YOLO format.
+
 # Dependency
 - torch 0.3.1
 - opencv-python
@@ -13,6 +25,23 @@ Project only supports python3.x.
 - argparse
 
 # Train
+## Prepare
+#### VOC -> YOLO
+```sh
+Data of VOC format(lxml) -> YOLO format(txt).
+You can use the script in ./TOOL/voc2yolo.py to complete the conversion work.
+```
+- Usage
+	- modify Line<xx~xx> according to your needs
+	- run "python3 voc2yolo.py"
+#### Get good priors
+```sh
+Run k-means clustering on the dimensions of bounding boxes to get good priors for our model.
+You can use the script in ./TOOL/genPriors/genPriors.py to get the good priors.
+```
+- Usage
+	- modify the options.json according to your needs
+	- run "python3 genPriors.py"
 ## YOLOV1
 ```sh
 preparing...
@@ -86,18 +115,6 @@ run "python3 detector.py --version yolo3"
 ```sh
 preparing
 ```
-
-# To do
-- [ ] Test the model of YOLOv1.
-- [ ] Train the model of YOLOv1.
-- [x] Test the model of YOLOv2.
-- [x] Train the model of YOLOv2.
-- [x] Test the model of YOLOv3.
-- [x] Train the model of YOLOv3.
-- [x] Data augmentation.
-- [ ] Using k-means to generate the bounding box.
-- [x] Evaluate the model including mAP, precision, recall, etc.
-- [ ] Data of VOC format -> YOLO format.
 
 # Reference
 - [marvis](https://github.com/marvis/pytorch-yolo2)
