@@ -16,7 +16,6 @@ from dataset.dataset import myDataset
 Function:
 	class for eval including precision, recall, etc.
 '''
-# ----------------------------------------------------------------------------------------------------------------------------------
 class evalModel():
 	def __init__(self, **kwargs):
 		self.options = kwargs
