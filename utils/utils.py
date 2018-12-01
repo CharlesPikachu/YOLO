@@ -351,7 +351,7 @@ def softmax(x):
 '''
 Function:
 	Compute iou.
-	IOU = Overlapping area / (two boxes' total area - Overlapping area)
+	IoU = Overlapping area / (two boxes' total area - Overlapping area)
 	Range: 0 - 1
 	About x1y1x2y2: determine the box data format.
 '''
