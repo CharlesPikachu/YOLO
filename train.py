@@ -47,8 +47,11 @@ class train():
 			self.__train_epoch(epoch)
 	# train for one epoch.
 	def __train_epoch(self, epoch):
-		if self.ngpus > 1:
-			cur_model = self.model.module
+		if self.use_cuda:
+			if self.ngpus > 1:
+				cur_model = self.model.module
+			else:
+				cur_model = self.model
 		else:
 			cur_model = self.model
 		train_loader = torch.utils.data.DataLoader(
@@ -102,7 +105,6 @@ class train():
 		self.testlabpth = self.options.get('testlabpth')
 		self.num_workers = self.options.get('num_workers')
 		self.is_multiscale = self.options.get('is_multiscale')
-		self.weightfile = self.options.get('weightfile')
 		self.nsamples = file_lines(self.trainSet)
 		self.batch_size = int(self.net_options.get('batch'))
 		self.max_batches = int(self.net_options.get('max_batches'))

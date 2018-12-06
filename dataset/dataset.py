@@ -23,7 +23,6 @@ Input:
 	-is_train: for train or test.
 	-seen: the number of pictures fed into network.
 	-num_workers: the number of workers.
-	-batch_size: size of each batch.
 	-is_multiscale: whether change the size of input images or not.
 '''
 class myDataset(Dataset):
@@ -44,7 +43,6 @@ class myDataset(Dataset):
 		self.is_train = kwargs.get('is_train')
 		self.shape = shape
 		self.seen = kwargs.get('seen') if kwargs.get('seen') else 1
-		self.batch_size = kwargs.get('batch_size')
 		self.num_workers = kwargs.get('num_workers') if kwargs.get('num_workers') else 1
 		self.is_multiscale = kwargs.get('is_multiscale')
 		self.jitter = kwargs.get('jitter')

@@ -19,7 +19,8 @@ Function:
 class evalModel():
 	def __init__(self, **kwargs):
 		self.options = kwargs
-		kgs = {'num_workers': kwargs.get('num_workers'), 'pin_memory': True} if kwargs.get('use_cuda') else {}
+		self.use_cuda = kwargs.get('use_cuda')
+		kgs = {'num_workers': kwargs.get('num_workers'), 'pin_memory': True} if self.use_cuda else {}
 		self.test_loader = torch.utils.data.DataLoader(
 								myDataset(root=[kwargs.get('testSet'), kwargs.get('testlabpth')],
 										  shape=(kwargs.get('init_width'), kwargs.get('init_height')),

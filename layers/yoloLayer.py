@@ -119,6 +119,7 @@ class yoloLayer(nn.Module):
 	def __init__(self, **kwargs):
 		super(yoloLayer, self).__init__()
 		self.options = kwargs
+		self.use_cuda = kwargs.get('use_cuda')
 		self.seen = self.options.get('seen')
 	# for forward
 	def forward(self, output, target):
@@ -141,24 +142,41 @@ class yoloLayer(nn.Module):
 			anchors = self.options.get('anchors')
 		# 5 -> (x, y, w, h) and box confidence.
 		output = output.view(nB, nA, (5+nC), nH, nW)
-		x = F.sigmoid(output.index_select(2, Variable(torch.cuda.LongTensor([0]))).view(nB, nA, nH, nW))
-		y = F.sigmoid(output.index_select(2, Variable(torch.cuda.LongTensor([1]))).view(nB, nA, nH, nW))
-		w = output.index_select(2, Variable(torch.cuda.LongTensor([2]))).view(nB, nA, nH, nW)
-		h = output.index_select(2, Variable(torch.cuda.LongTensor([3]))).view(nB, nA, nH, nW)
-		conf = F.sigmoid(output.index_select(2, Variable(torch.cuda.LongTensor([4]))).view(nB, nA, nH, nW))
-		cls_ = output.index_select(2, Variable(torch.linspace(5, 5+nC-1, nC).long().cuda()))
+		if self.use_cuda:
+			x = F.sigmoid(output.index_select(2, Variable(torch.cuda.LongTensor([0]))).view(nB, nA, nH, nW))
+			y = F.sigmoid(output.index_select(2, Variable(torch.cuda.LongTensor([1]))).view(nB, nA, nH, nW))
+			w = output.index_select(2, Variable(torch.cuda.LongTensor([2]))).view(nB, nA, nH, nW)
+			h = output.index_select(2, Variable(torch.cuda.LongTensor([3]))).view(nB, nA, nH, nW)
+			conf = F.sigmoid(output.index_select(2, Variable(torch.cuda.LongTensor([4]))).view(nB, nA, nH, nW))
+			cls_ = output.index_select(2, Variable(torch.linspace(5, 5+nC-1, nC).long().cuda()))
+		else:
+			x = F.sigmoid(output.index_select(2, Variable(torch.LongTensor([0]))).view(nB, nA, nH, nW))
+			y = F.sigmoid(output.index_select(2, Variable(torch.LongTensor([1]))).view(nB, nA, nH, nW))
+			w = output.index_select(2, Variable(torch.LongTensor([2]))).view(nB, nA, nH, nW)
+			h = output.index_select(2, Variable(torch.LongTensor([3]))).view(nB, nA, nH, nW)
+			conf = F.sigmoid(output.index_select(2, Variable(torch.LongTensor([4]))).view(nB, nA, nH, nW))
+			cls_ = output.index_select(2, Variable(torch.linspace(5, 5+nC-1, nC).long()))
 		cls_ = cls_.view(nB*nA, nC, nH*nW).transpose(1, 2).contiguous().view(nB*nA*nH*nW, nC)
 		'''
 		Part2: Get predict results 
 		'''
-		pred_boxes = torch.cuda.FloatTensor(4, nB*nA*nH*nW)
-		grid_x = torch.linspace(0, nW-1, nW).repeat(nH, 1).repeat(nB*nA, 1, 1).view(nB*nA*nH*nW).cuda()
-		grid_y = torch.linspace(0, nH-1, nH).repeat(nW, 1).t().repeat(nB*nA, 1, 1).view(nB*nA*nH*nW).cuda()
+		if self.use_cuda:
+			pred_boxes = torch.cuda.FloatTensor(4, nB*nA*nH*nW)
+			grid_x = torch.linspace(0, nW-1, nW).repeat(nH, 1).repeat(nB*nA, 1, 1).view(nB*nA*nH*nW).cuda()
+			grid_y = torch.linspace(0, nH-1, nH).repeat(nW, 1).t().repeat(nB*nA, 1, 1).view(nB*nA*nH*nW).cuda()
+		else:
+			pred_boxes = torch.FloatTensor(4, nB*nA*nH*nW)
+			grid_x = torch.linspace(0, nW-1, nW).repeat(nH, 1).repeat(nB*nA, 1, 1).view(nB*nA*nH*nW)
+			grid_y = torch.linspace(0, nH-1, nH).repeat(nW, 1).t().repeat(nB*nA, 1, 1).view(nB*nA*nH*nW)
 		# anchor_step = 2
 		anchor_step = len(self.options.get('anchors')) // self.options.get('num_anchors')
 		assert anchor_step == 2
-		anchor_w = torch.Tensor(anchors).view(nA, anchor_step).index_select(1, torch.LongTensor([0])).cuda()
-		anchor_h = torch.Tensor(anchors).view(nA, anchor_step).index_select(1, torch.LongTensor([1])).cuda()
+		if self.use_cuda:
+			anchor_w = torch.Tensor(anchors).view(nA, anchor_step).index_select(1, torch.LongTensor([0])).cuda()
+			anchor_h = torch.Tensor(anchors).view(nA, anchor_step).index_select(1, torch.LongTensor([1])).cuda()
+		else:
+			anchor_w = torch.Tensor(anchors).view(nA, anchor_step).index_select(1, torch.LongTensor([0]))
+			anchor_h = torch.Tensor(anchors).view(nA, anchor_step).index_select(1, torch.LongTensor([1]))
 		anchor_w = anchor_w.repeat(nB, 1).repeat(1, 1, nH*nW).view(nB*nA*nH*nW)
 		anchor_h = anchor_h.repeat(nB, 1).repeat(1, 1, nH*nW).view(nB*nA*nH*nW)
 		pred_boxes[0] = x.data + grid_x
@@ -189,16 +207,29 @@ class yoloLayer(nn.Module):
 		# conf > 0.25 as the proposals.
 		nProposals = int((conf > 0.25).sum().data[0])
 		# the targets.
-		tx = Variable(tx.cuda())
-		ty = Variable(ty.cuda())
-		tw = Variable(tw.cuda())
-		th = Variable(th.cuda())
-		tconf = Variable(tconf.cuda())
-		tcls = Variable(tcls.view(-1)[cls_mask].long().cuda())
+		if self.use_cuda:
+			tx = Variable(tx.cuda())
+			ty = Variable(ty.cuda())
+			tw = Variable(tw.cuda())
+			th = Variable(th.cuda())
+			tconf = Variable(tconf.cuda())
+			tcls = Variable(tcls.view(-1)[cls_mask].long().cuda())
+		else:
+			tx = Variable(tx)
+			ty = Variable(ty)
+			tw = Variable(tw)
+			th = Variable(th)
+			tconf = Variable(tconf)
+			tcls = Variable(tcls.view(-1)[cls_mask].long())
 		# the masks
-		coord_mask = Variable(coord_mask.cuda())
-		conf_mask = Variable(conf_mask.cuda().sqrt())
-		cls_mask = Variable(cls_mask.view(-1, 1).repeat(1, nC).cuda())
+		if self.use_cuda:
+			coord_mask = Variable(coord_mask.cuda())
+			conf_mask = Variable(conf_mask.cuda().sqrt())
+			cls_mask = Variable(cls_mask.view(-1, 1).repeat(1, nC).cuda())
+		else:
+			coord_mask = Variable(coord_mask)
+			conf_mask = Variable(conf_mask.sqrt())
+			cls_mask = Variable(cls_mask.view(-1, 1).repeat(1, nC))
 		cls_ = nn.Sigmoid()(cls_[cls_mask].view(-1, nC))
 		'''
 		Part4: calculate loss.
@@ -211,12 +242,27 @@ class yoloLayer(nn.Module):
 			loss_w = coord_scale * nn.MSELoss(size_average=False)(w*coord_mask, tw*coord_mask)/2.0 * 0.2
 			loss_h = coord_scale * nn.MSELoss(size_average=False)(h*coord_mask, th*coord_mask)/2.0 * 0.2
 			loss_conf = nn.MSELoss(size_average=False)(conf*conf_mask, tconf*conf_mask)/2.0 * 0.2
-			loss_cls = class_scale * nn.BCELoss(size_average=False)(cls_, Variable(torch.zeros(cls_.shape).index_fill_(1, tcls.data.cpu().long(), 1.0)).cuda()) * 0.2
+			if self.use_cuda:
+				try:
+					loss_cls = class_scale * nn.BCELoss(size_average=False)(cls_, Variable(torch.zeros(cls_.shape).index_fill_(1, tcls.data.cpu().long(), 1.0)).cuda()) * 0.2
+				except:
+					loss_cls = 0
+			else:
+				try:
+					loss_cls = class_scale * nn.BCELoss(size_average=False)(cls_, Variable(torch.zeros(cls_.shape).index_fill_(1, tcls.data.cpu().long(), 1.0))) * 0.2
+				except:
+					loss_cls = 0
 		else:
 			loss_w = coord_scale * nn.MSELoss(size_average=False)(w*coord_mask, tw*coord_mask)/2.0
 			loss_h = coord_scale * nn.MSELoss(size_average=False)(h*coord_mask, th*coord_mask)/2.0
 			loss_conf = nn.MSELoss(size_average=False)(conf*conf_mask, tconf*conf_mask)/2.0
-			loss_cls = class_scale * nn.BCELoss(size_average=False)(cls_, Variable(torch.zeros(cls_.shape).index_fill_(1, tcls.data.cpu().long(), 1.0)).cuda())
+			if self.use_cuda:
+				loss_cls = class_scale * nn.BCELoss(size_average=False)(cls_, Variable(torch.zeros(cls_.shape).index_fill_(1, tcls.data.cpu().long(), 1.0)).cuda())
+			else:
+				loss_cls = class_scale * nn.BCELoss(size_average=False)(cls_, Variable(torch.zeros(cls_.shape).index_fill_(1, tcls.data.cpu().long(), 1.0)))
 		loss = (loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls) / 3
-		print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data[0], loss_y.data[0], loss_w.data[0], loss_h.data[0], loss_conf.data[0], loss_cls.data[0], loss.data[0]))
+		try:
+			print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data[0], loss_y.data[0], loss_w.data[0], loss_h.data[0], loss_conf.data[0], loss_cls.data[0], loss.data[0]))
+		except:
+			print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data[0], loss_y.data[0], loss_w.data[0], loss_h.data[0], loss_conf.data[0], loss_cls, loss.data[0]))
 		return loss

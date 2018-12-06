@@ -108,7 +108,8 @@ class Darknet(nn.Module):
 		super(Darknet, self).__init__()
 		self.blocks = CfgParser().parser(options.get('cfgfile'), is_print=True)
 		# record some information of the model.
-		self.header = torch.IntTensor([0, 0, 0, 0, 0])
+		self.header_len = options.get('header_len')
+		self.header = torch.IntTensor([0,] * self.header_len)
 		self.seen = self.header[3]
 		self.det_strides = []
 		self.options = options
@@ -307,6 +308,7 @@ class Darknet(nn.Module):
 				noobject_scale = float(block['noobject_scale'])
 				class_scale = float(block['class_scale'])
 				coord_scale = float(block['coord_scale'])
+				use_cuda = self.options.get('use_cuda')
 				deLayer = detectionLayer.detectionLayer(num_classes=num_classes,
 														coord_scale=coord_scale,
 														class_scale=class_scale,
@@ -328,6 +330,7 @@ class Darknet(nn.Module):
 				by_stride = self.options.get('by_stride')
 				coord_scale = float(block['coord_scale'])
 				class_scale = float(block['class_scale'])
+				use_cuda = self.options.get('use_cuda')
 				reLayer = regionLayer.regionLayer(num_anchors=num_anchors,
 												  num_classes=num_classes,
 												  stride=prev_stride,
@@ -339,7 +342,8 @@ class Darknet(nn.Module):
 												  max_object=max_object,
 												  by_stride=by_stride,
 												  coord_scale=coord_scale,
-												  class_scale=class_scale)
+												  class_scale=class_scale,
+												  use_cuda=use_cuda)
 				self.det_strides.append(prev_stride)
 				models.append(reLayer)
 			elif block['layer_type'] == 'yolo':
@@ -361,6 +365,7 @@ class Darknet(nn.Module):
 				by_stride = self.options.get('by_stride')
 				coord_scale = float(block['coord_scale'])
 				class_scale = float(block['class_scale'])
+				use_cuda = self.options.get('use_cuda')
 				yoLayer = yoloLayer.yoloLayer(num_anchors=len(anchor_mask),
 											  num_classes=num_classes,
 											  stride=prev_stride,
@@ -372,7 +377,8 @@ class Darknet(nn.Module):
 											  max_object=max_object,
 											  by_stride=by_stride,
 											  coord_scale=coord_scale,
-											  class_scale=class_scale)
+											  class_scale=class_scale,
+											  use_cuda=use_cuda)
 				models.append(yoLayer)
 				self.det_strides.append(prev_stride)
 			else:
@@ -383,7 +389,7 @@ class Darknet(nn.Module):
 	def load_weights(self, weightfile):
 		with open(weightfile, 'rb') as fp:
 			# before yolo3, weights get from https://github.com/pjreddie/darknet count = 4.
-			header = np.fromfile(fp, count=5, dtype=np.int32)
+			header = np.fromfile(fp, count=self.header_len, dtype=np.int32)
 			self.header = torch.from_numpy(header)
 			self.seen = self.header[3]
 			buf = np.fromfile(fp, dtype=np.float32)
