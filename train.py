@@ -61,7 +61,6 @@ class train():
 									  transform=transforms.Compose([transforms.ToTensor(),]),
 									  is_train=True,
 									  seen=cur_model.seen,
-									  batch_size=self.batch_size,
 									  num_workers=self.num_workers,
 									  is_multiscale=self.is_multiscale,
 									  jitter=self.jitter,
