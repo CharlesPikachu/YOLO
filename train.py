@@ -67,7 +67,8 @@ class train():
 									  hue=self.hue,
 									  saturation=self.saturation,
 									  exposure=self.exposure,
-									  max_object=self.max_object),
+									  max_object=self.max_object,
+									  batch_size=self.batch_size),
 							batch_size=self.batch_size,
 							shuffle=False,
 							**self.kwargs)

@@ -24,6 +24,7 @@ Input:
 	-seen: the number of pictures fed into network.
 	-num_workers: the number of workers.
 	-is_multiscale: whether change the size of input images or not.
+	-batch_size: the data size of a batch.
 '''
 class myDataset(Dataset):
 	def __init__(self, root, shape=None, **kwargs):
@@ -50,6 +51,7 @@ class myDataset(Dataset):
 		self.saturation = kwargs.get('saturation')
 		self.exposure = kwargs.get('exposure')
 		self.max_object = kwargs.get('max_object')
+		self.batch_size = kwargs.get('batch_size')
 	def __len__(self):
 		return self.nSamples
 	def __getitem__(self, index):
@@ -60,17 +62,17 @@ class myDataset(Dataset):
 		else:
 			labpath = self.labpaths[index].rstrip()
 		if self.is_multiscale:
-			if self.is_train and index % 64 == 0:
-				if self.seen < 4000*64:
+			if self.is_train and index % self.batch_size == 0:
+				if self.seen < 4000*self.batch_size:
 					width = 13 * 32
 					self.shape = (width, width)
-				elif self.seen < 8000*64:
+				elif self.seen < 8000*self.batch_size:
 					width = (random.randint(0, 3) + 13) * 32
 					self.shape = (width, width)
-				elif self.seen < 12000*64:
+				elif self.seen < 12000*self.batch_size:
 					width = (random.randint(0, 5) + 12) * 32
 					self.shape = (width, width)
-				elif self.seen < 16000*64:
+				elif self.seen < 16000*self.batch_size:
 					width = (random.randint(0, 7) + 11) * 32
 					self.shape = (width, width)
 				else:

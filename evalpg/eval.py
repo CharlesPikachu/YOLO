@@ -29,7 +29,8 @@ class evalModel():
 										  is_train=False,
 										  num_workers=kwargs.get('num_workers'),
 										  is_multiscale=kwargs.get('is_multiscale'),
-										  max_object=kwargs.get('max_object')),
+										  max_object=kwargs.get('max_object'),
+										  batch_size=kwargs.get('batch_size')),
 								shuffle=False,
 								batch_size=kwargs.get('batch_size'),
 								**kgs)
