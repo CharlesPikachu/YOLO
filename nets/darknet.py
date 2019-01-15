@@ -343,7 +343,8 @@ class Darknet(nn.Module):
 												  by_stride=by_stride,
 												  coord_scale=coord_scale,
 												  class_scale=class_scale,
-												  use_cuda=use_cuda)
+												  use_cuda=use_cuda,
+												  logsavefile=self.options.get('logsavefile'))
 				self.det_strides.append(prev_stride)
 				models.append(reLayer)
 			elif block['layer_type'] == 'yolo':
@@ -378,7 +379,8 @@ class Darknet(nn.Module):
 											  by_stride=by_stride,
 											  coord_scale=coord_scale,
 											  class_scale=class_scale,
-											  use_cuda=use_cuda)
+											  use_cuda=use_cuda,
+											  logsavefile=self.options.get('logsavefile'))
 				models.append(yoLayer)
 				self.det_strides.append(prev_stride)
 			else:

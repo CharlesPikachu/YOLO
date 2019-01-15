@@ -426,8 +426,13 @@ Function:
 	print function.
 '''
 # ----------------------------------------------------------------------------------------------------------------------------------
-def logging(message):
-	print('%s %s' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), message))
+def logging(message, savefile=None):
+	content = '%s %s' % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), message)
+	if savefile:
+		f = open(savefile, 'a')
+		f.write(content + '\n')
+		f.close()
+	print(content)
 # ----------------------------------------------------------------------------------------------------------------------------------
 
 

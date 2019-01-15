@@ -5,7 +5,6 @@ Function:
 	eval the model of yoloV1-yoloV3.
 '''
 import torch
-import config
 from utils.utils import *
 from torchvision import transforms
 from torch.autograd import Variable
@@ -34,6 +33,7 @@ class evalModel():
 								shuffle=False,
 								batch_size=kwargs.get('batch_size'),
 								**kgs)
+		self.logsavefile = kwargs.get('logsavefile')
 	# eval the model
 	def eval(self, model):
 		model.eval()
@@ -118,7 +118,7 @@ class evalModel():
 		precision = 1.0 * correct / (proposals + eps)
 		recall = 1.0 * correct / (total + eps)
 		fscore = 2.0 * precision * recall / (precision + recall + eps)
-		logging("[precision]: %f, [recall]: %f, [fscore]: %f" % (precision, recall, fscore))
+		logging("[precision]: %f, [recall]: %f, [fscore]: %f" % (precision, recall, fscore), self.logsavefile)
 		cur_model.options['mode'] = 'train'
 	def __truths_len(self, truths):
 		i = -1

@@ -72,7 +72,7 @@ class train():
 							batch_size=self.batch_size,
 							shuffle=False,
 							**self.kwargs)
-		logging('epoch %d, processed %d samples, processed_batches %d' % (epoch, epoch * len(train_loader.dataset), self.processed_batches))
+		logging('epoch %d, processed %d samples, processed_batches %d' % (epoch, epoch * len(train_loader.dataset), self.processed_batches), self.logsavefile)
 		self.model.train()
 		for batch_idx, (data, target) in enumerate(train_loader):
 			lr = self.__adjust_lr(self.optimizer, self.processed_batches)
@@ -88,7 +88,7 @@ class train():
 			loss.backward()
 			self.optimizer.step()
 		if ((epoch + 1) % self.save_interval == 0) or ((epoch + 1) == self.max_epochs):
-			logging('save weights to %s/%06d.weights' % (self.backupdir, epoch+1))
+			logging('save weights to %s/%06d.weights' % (self.backupdir, epoch+1), self.logsavefile)
 			cur_model.seen = (epoch + 1) * len(train_loader.dataset)
 			cur_model.save_weights('%s/%06d.weights' % (self.backupdir, epoch+1))
 			self.EM.eval(self.model)
@@ -119,6 +119,7 @@ class train():
 		self.exposure = float(self.net_options.get('exposure'))
 		self.hue = float(self.net_options.get('hue'))
 		self.max_epochs = math.ceil(self.max_batches * self.batch_size / self.nsamples)
+		self.logsavefile = self.options.get('logsavefile')
 		if not os.path.exists(self.backupdir):
 			os.mkdir(self.backupdir)
 		if self.use_cuda:
@@ -131,7 +132,7 @@ class train():
 		self.init_width = int(self.net_options.get('width'))
 		self.init_height = int(self.net_options.get('height'))
 		self.init_epoch = self.model.seen // self.nsamples
-		self.processed_batches = self.model.seen // self.nsamples
+		self.processed_batches = self.model.seen // self.batch_size
 		self.kwargs = {'num_workers': self.num_workers, 'pin_memory': True} if self.use_cuda else {}
 		if self.use_cuda:
 			if self.ngpus > 1:
@@ -157,7 +158,8 @@ class train():
 							max_object=self.max_object,
 							is_multiscale=self.is_multiscale,
 							yolo_type=self.yolo_type,
-							nms_thresh=self.options.get('nms_thresh'))
+							nms_thresh=self.options.get('nms_thresh'),
+							logsavefile=self.logsavefile)
 	# adjust learning rate.
 	def __adjust_lr(self, optimizer, batch_idx):
 		lr = self.learning_rate
